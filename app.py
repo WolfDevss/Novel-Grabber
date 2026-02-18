@@ -20,10 +20,11 @@ def make_epub():
     cmd = [
         "java",
         "-jar",
-        "target/novel-grabber-3.10.3-jar-with-dependencies.jar",
+        "NG-Launcher.jar",
         novel_url,
         "--output",
-        output_path
+        output_path,
+        "--settings", "settings.json"
     ]
 
     try:
