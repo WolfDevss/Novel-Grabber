@@ -1,33 +1,34 @@
-from flask import Flask, request, send_file, jsonify
-import subprocess
 import os
+import subprocess
 import uuid
+from flask import Flask, request, send_file, jsonify
 
 app = Flask(__name__)
 
 @app.route("/make_epub", methods=["POST"])
 def make_epub():
-    data = request.json
-    url = data.get("url")
+    data = request.get_json()
+    if not data or "url" not in data:
+        return jsonify({"error": "Missing 'url'"}), 400
 
-    if not url:
-        return jsonify({"error": "Missing url"}), 400
+    novel_url = data["url"]
+    tmp_dir = f"/tmp/{uuid.uuid4()}"
+    os.makedirs(tmp_dir, exist_ok=True)
+    output_path = os.path.join(tmp_dir, "novel.epub")
 
-    job_id = str(uuid.uuid4())
-    output_dir = f"/tmp/{job_id}"
-    os.makedirs(output_dir, exist_ok=True)
-
-    output_file = f"{output_dir}/novel.epub"
-
-    # Call Novel-Grabber CLI
+    # Call NG-Launcher.jar instead of main.py
     cmd = [
-        "python",
-        "main.py",
-        url,
+        "java",
+        "-jar",
+        "target/novel-grabber-3.10.3-jar-with-dependencies.jar",
+        novel_url,
         "--output",
-        output_file
+        output_path
     ]
 
-    subprocess.run(cmd, check=True)
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": "Failed to generate EPUB", "details": str(e)}), 500
 
-    return send_file(output_file, as_attachment=True)
+    return send_file(output_path, as_attachment=True)
